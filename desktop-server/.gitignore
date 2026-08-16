@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+
+# Temp & Debug artifacts
+_*
+*.bak
+*.pre-userbak
+.tempmediaStorage/
+scratch/

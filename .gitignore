@@ -1,0 +1,30 @@
+# ===== 构建产物 / 缓存 =====
+build/
+.gradle/
+android-app/build/
+android-app/app/build/
+android-app/.gradle/
+android-app/local.properties
+android-app/.idea/
+*.iml
+
+# ===== 本地构建工具链（SDK/JDK/Gradle 缓存，体积大且含个人路径）=====
+build-tools/
+
+# ===== 备份与历史产物 =====
+_backups/
+scratch/
+*.apk
+*.idsig
+*.pre-userbak
+wallpaper.jpg
+
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+*.log
+
+# ===== 运行时/个人数据 =====
+.workbuddy/
+docs/HANDOFF-MEMORY-2026-08-16.md

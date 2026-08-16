@@ -1,0 +1,2789 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>桌面副屏</title>
+<style>
+/* ==================== 基础样式与色彩变量 ==================== */
+:root {
+  --lyric-font-size: 16px;
+  /* 无级调节动态变量 */
+  --card-opacity: 0.25;
+  --card-blur: 14px;
+
+  /* 默认暗色主题 Token */
+  --bg-primary: #080c14;
+  --bg-card: rgba(15, 23, 42, var(--card-opacity));
+  --bg-card-hover: rgba(22, 33, 58, calc(var(--card-opacity) + 0.1));
+  --bg-sub-item: rgba(0, 0, 0, calc(var(--card-opacity) * 1.2 + 0.1));
+  --border-color: rgba(255, 255, 255, 0.18);
+  --border-light: rgba(255, 255, 255, 0.35);
+  --text-primary: #ffffff;
+  --text-secondary: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.8);
+  --text-glow-active: 0 0 18px rgba(59, 130, 246, 0.9), 0 1px 4px rgba(0, 0, 0, 0.9);
+  --accent-blue: #3b82f6;
+  --accent-cyan: #06b6d4;
+  --accent-green: #10b981;
+  --accent-yellow: #f59e0b;
+  --accent-red: #ef4444;
+  --accent-purple: #a855f7;
+  --topbar-bg: rgba(10, 14, 23, 0.35);
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --glass-blur: blur(var(--card-blur));
+}
+
+/* 浅色/明亮壁纸自适应主题 Token */
+body.theme-light {
+  --bg-primary: #f8fafc;
+  --bg-card: rgba(255, 255, 255, calc(var(--card-opacity) + 0.12));
+  --bg-card-hover: rgba(255, 255, 255, calc(var(--card-opacity) + 0.22));
+  --bg-sub-item: rgba(255, 255, 255, calc(var(--card-opacity) + 0.2));
+  --border-color: rgba(255, 255, 255, 0.7);
+  --border-light: rgba(255, 255, 255, 0.9);
+  --text-primary: #0f172a;
+  --text-secondary: #1e293b;
+  --text-muted: #475569;
+  --text-shadow: 0 0 8px rgba(255, 255, 255, 0.95), 0 1px 3px rgba(255, 255, 255, 0.85);
+  --text-glow-active: 0 0 18px rgba(255, 255, 255, 1), 0 0 8px #ffffff;
+  --accent-blue: #2563eb;
+  --accent-cyan: #0891b2;
+  --accent-green: #059669;
+  --accent-yellow: #d97706;
+  --accent-red: #dc2626;
+  --accent-purple: #9333ea;
+  --topbar-bg: rgba(255, 255, 255, 0.35);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  position: relative;
+  transition: color 0.35s ease;
+}
+
+/* ==================== 全屏动态背景层 (完全露出来) ==================== */
+.bg-wallpaper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: -2;
+  transition: opacity 0.5s ease;
+  opacity: 0;
+}
+.bg-wallpaper.loaded { opacity: 1; }
+
+.bg-mask {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.05);
+  z-index: -1;
+  pointer-events: none;
+}
+body.theme-light .bg-mask {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ==================== 极简顶栏 (居中对称) ==================== */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 38px;
+  background: var(--topbar-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  z-index: 100;
+  transition: all 0.35s ease;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.topbar-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text-primary);
+  text-shadow: var(--text-shadow);
+}
+
+.topbar-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-shadow: var(--text-shadow);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.connection-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+  background: var(--bg-sub-item);
+  backdrop-filter: blur(8px);
+  text-shadow: var(--text-shadow);
+}
+
+.connection-badge.connected {
+  border-color: rgba(16, 185, 129, 0.5);
+  color: var(--accent-green);
+}
+
+.connection-badge.disconnected {
+  border-color: rgba(239, 68, 68, 0.5);
+  color: var(--accent-red);
+}
+
+.connection-badge.connecting {
+  border-color: rgba(245, 158, 11, 0.5);
+  color: var(--accent-yellow);
+}
+
+.conn-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.conn-dot.pulse {
+  animation: pulse-anim 1.5s infinite;
+}
+
+@keyframes pulse-anim {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.topbar-btn {
+  background: var(--bg-sub-item);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s ease;
+}
+
+.topbar-btn:active {
+  transform: scale(0.9);
+  background: var(--border-color);
+}
+
+.topbar-right {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ==================== 主体布局 ==================== */
+.main-wrap {
+  position: absolute;
+  top: 38px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  padding: 6px 8px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 100%;
+}
+
+/* ==================== 连接与设置面板 (含无级透明度调节) ==================== */
+.config-panel {
+  background: var(--bg-card);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 6px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.config-panel.hidden { display: none !important; }
+
+.config-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  text-shadow: var(--text-shadow);
+}
+
+.slider-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-sub-item);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  margin-bottom: 8px;
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.slider-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  width: 90px;
+  flex-shrink: 0;
+}
+
+.slider-input {
+  flex: 1;
+  accent-color: var(--accent-blue);
+  cursor: pointer;
+}
+
+.slider-val {
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  width: 40px;
+  text-align: right;
+  color: var(--accent-cyan);
+}
+
+.input-group {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.input-field {
+  flex: 1;
+  background: var(--bg-sub-item);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  color: var(--text-primary);
+  font-size: 12px;
+  outline: none;
+}
+
+.input-field:focus { border-color: var(--accent-blue); }
+
+.btn-row { display: flex; gap: 6px; }
+
+.btn {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-primary { background: var(--accent-blue); color: white; }
+.btn-secondary { background: var(--bg-sub-item); color: var(--text-primary); border: 1px solid var(--border-color); }
+
+.discovered-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.discovered-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: var(--bg-sub-item);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 11px;
+  text-shadow: var(--text-shadow);
+}
+
+.no-discovery {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 4px;
+}
+
+/* ==================== 仪表盘网格 ==================== */
+.dashboard {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  height: 100%;
+}
+
+/* 极致通透超薄无级磨砂卡片 */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.1s ease, backdrop-filter 0.1s ease, color 0.35s ease;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.card-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.brand-logo-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+}
+
+.brand-logo-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.app-icon-img {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: contain;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease;
+}
+
+.card-model-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-shadow: var(--text-shadow);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.2px;
+}
+
+.card-value {
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  margin-left: 6px;
+  text-shadow: var(--text-shadow);
+}
+
+.card-value.green { color: var(--accent-green); }
+.card-value.yellow { color: var(--accent-yellow); }
+.card-value.red { color: var(--accent-red); }
+.card-value.blue { color: var(--accent-blue); }
+.card-value.cyan { color: var(--accent-cyan); }
+.card-value.purple { color: var(--accent-purple); }
+
+/* ==================== 时钟、手机电量与实时网速卡片 ==================== */
+.time-net-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.time-clock-wrap {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  gap: 1px;
+}
+
+.time-clock-main {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--text-primary);
+  text-shadow: var(--text-shadow);
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.time-clock-sec {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  text-shadow: var(--text-shadow);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.time-date-sub {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-shadow: var(--text-shadow);
+  margin-left: 5px;
+  white-space: nowrap;
+}
+
+.phone-battery-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--bg-sub-item);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+}
+
+.battery-icon-box {
+  position: relative;
+  width: 22px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.battery-svg {
+  width: 22px;
+  height: 12px;
+  color: var(--text-secondary);
+}
+
+.battery-charge-bolt {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 9px;
+  color: #fbbf24;
+  text-shadow: 0 0 4px #f59e0b;
+  animation: pulseBolt 1s infinite alternate;
+}
+
+@keyframes pulseBolt {
+  0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+}
+
+.battery-pct-text {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-primary);
+  text-shadow: var(--text-shadow);
+  font-variant-numeric: tabular-nums;
+}
+
+.net-stats-row {
+  margin-bottom: 0px !important;
+}
+
+.net-item .stat-item-value {
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+}
+
+/* 统计参数行 */
+.stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+
+.stats-row-2 { grid-template-columns: 1fr 1fr; }
+
+.stat-item {
+  background: var(--bg-sub-item);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 3px 5px;
+  text-align: center;
+  transition: all 0.35s ease;
+}
+
+.stat-item-value {
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  text-shadow: var(--text-shadow);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-item-label {
+  font-size: 8.5px;
+  color: var(--text-muted);
+  text-shadow: var(--text-shadow);
+  margin-top: 1px;
+}
+
+/* CPU 核心网格 */
+.cpu-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 3px;
+}
+
+.cpu-core {
+  background: var(--bg-sub-item);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  padding: 2px 1px;
+  text-align: center;
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.cpu-core.green { border-bottom-color: var(--accent-green); color: var(--text-primary); }
+.cpu-core.yellow { border-bottom-color: var(--accent-yellow); color: var(--accent-yellow); }
+.cpu-core.red { border-bottom-color: var(--accent-red); color: var(--accent-red); }
+
+/* GPU 使用率进度条 */
+.bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+.bar-bg {
+  flex: 1;
+  height: 4px;
+  background: var(--bg-sub-item);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue));
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* 内存 / 磁盘环形图 (全新自适应高精度设计) */
+.ring-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  width: 100%;
+  height: 100%;
+}
+
+.ring-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 2px;
+}
+
+.ring-box {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ring-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.ring-bg {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+.ring-fg {
+  transition: stroke-dashoffset 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  stroke-linecap: round;
+}
+
+.ring-fg-mem {
+  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.6));
+}
+
+.ring-fg-disk {
+  filter: drop-shadow(0 0 4px rgba(168, 85, 247, 0.6));
+}
+
+.ring-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.ring-pct {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  text-shadow: var(--text-shadow);
+  line-height: 1;
+}
+
+.ring-label {
+  font-size: 7.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-shadow: var(--text-shadow);
+  margin-top: 1px;
+  line-height: 1;
+}
+
+.ring-detail {
+  font-size: 8.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  text-shadow: var(--text-shadow);
+  white-space: nowrap;
+}
+
+/* ==================== 歌词大屏卡片 ==================== */
+.lyrics-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.lyrics-song-info {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 6px;
+  position: relative;
+  z-index: 100;
+  pointer-events: auto;
+}
+
+/* 第一行：媒体控制按键定格在左侧 + 歌名自适应 */
+.lyrics-title-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 2px;
+  min-height: 40px;
+  z-index: 100;
+  pointer-events: auto;
+}
+
+.lyrics-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 110;
+  position: relative;
+  pointer-events: auto;
+  flex-shrink: 0;
+}
+
+.media-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  padding: 0;
+}
+
+.media-btn svg,
+.media-btn path {
+  pointer-events: none;
+}
+
+.media-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(56, 189, 248, 0.5);
+  transform: scale(1.08);
+}
+
+.media-btn:active {
+  transform: scale(0.9);
+  background: rgba(56, 189, 248, 0.3);
+}
+
+.media-btn-play {
+  width: 38px;
+  height: 38px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.65), rgba(59, 130, 246, 0.85));
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.55), 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.media-btn-play:hover {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.85), rgba(59, 130, 246, 1));
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.8);
+  transform: scale(1.1);
+}
+
+.media-btn-play:active {
+  transform: scale(0.92);
+}
+
+/* ========== 播放控制按钮美化 (2026-08-17, 纯视觉不动逻辑) ========== */
+/* 三键玻璃胶囊容器 */
+.lyrics-controls {
+  gap: 12px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03));
+  border: 1px solid rgba(255,255,255,0.13);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 8px 24px rgba(0,0,0,0.26);
+}
+
+/* 侧键: 立体玻璃质感 */
+.media-btn {
+  background: linear-gradient(145deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+  border-color: rgba(255,255,255,0.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.24), 0 3px 10px rgba(0,0,0,0.30);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.media-btn svg {
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.45));
+}
+
+.media-btn:hover {
+  background: linear-gradient(145deg, rgba(255,255,255,0.28), rgba(255,255,255,0.13));
+  border-color: rgba(56, 189, 248, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.32), 0 0 14px rgba(56, 189, 248, 0.35), 0 4px 12px rgba(0,0,0,0.35);
+  transform: scale(1.08);
+}
+
+/* 上一首/下一首: 悬浮时图标微滑动 */
+#mediaPrevBtn:hover svg { transform: translateX(-1.5px); transition: transform 0.2s ease; }
+#mediaNextBtn:hover svg { transform: translateX(1.5px); transition: transform 0.2s ease; }
+
+/* 播放键: 高质感渐变 + 立体高光 */
+.media-btn-play {
+  background: linear-gradient(145deg, #38bdf8 0%, #2563eb 55%, #1d4ed8 100%);
+  border-color: rgba(255,255,255,0.55);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.42), 0 0 18px rgba(56, 189, 248, 0.65), 0 4px 14px rgba(0,0,0,0.45);
+}
+
+.media-btn-play svg {
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+}
+
+.media-btn-play:hover {
+  background: linear-gradient(145deg, #7dd3fc 0%, #3b82f6 55%, #2563eb 100%);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.5), 0 0 26px rgba(56, 189, 248, 0.85), 0 4px 16px rgba(0,0,0,0.5);
+}
+
+/* 播放中: 蓝色呼吸光晕 (data-playing 由 JS 维护, 无需改逻辑) */
+@keyframes playPulse {
+  0%, 100% { box-shadow: inset 0 1px 1px rgba(255,255,255,0.42), 0 0 14px rgba(56, 189, 248, 0.55), 0 4px 14px rgba(0,0,0,0.45); }
+  50% { box-shadow: inset 0 1px 1px rgba(255,255,255,0.42), 0 0 28px rgba(56, 189, 248, 0.95), 0 4px 18px rgba(0,0,0,0.5); }
+}
+.media-btn-play[data-playing="true"] {
+  animation: playPulse 2.2s ease-in-out infinite;
+}
+
+/* 暂停中: 粉色质感, 状态一目了然 */
+.media-btn-play[data-playing="false"] {
+  background: linear-gradient(145deg, #f9a8d4 0%, #ec4899 55%, #db2777 100%);
+  border-color: rgba(255,255,255,0.55);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.42), 0 0 16px rgba(236, 72, 153, 0.55), 0 4px 14px rgba(0,0,0,0.45);
+  animation: none;
+}
+.media-btn-play[data-playing="false"]:hover {
+  background: linear-gradient(145deg, #fbcfe8 0%, #f472b6 55%, #ec4899 100%);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.5), 0 0 24px rgba(236, 72, 153, 0.8), 0 4px 16px rgba(0,0,0,0.5);
+}
+
+.lyrics-song-title {
+  flex: 1;
+  font-size: 18px;
+  font-weight: 900;
+  color: #FFFFFF;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(56, 189, 248, 0.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.2px;
+  text-align: right;
+  padding-left: 12px;
+  pointer-events: none;
+}
+
+.lyrics-song-artist {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  pointer-events: none;
+}
+
+.lyrics-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  width: 100%;
+  position: relative;
+  z-index: 100;
+  pointer-events: auto;
+}
+
+/* 极大拓展可触控范围，彻底杜绝手机/触屏无法点击或滑动的情况 */
+.lyrics-progress-wrap {
+  flex: 1;
+  height: 32px;
+  cursor: pointer;
+  touch-action: none;
+  position: relative;
+  display: flex;
+  align-items: center;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: auto;
+}
+
+.lyrics-progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  position: relative;
+  overflow: visible;
+  pointer-events: none;
+  transition: height 0.15s ease, background 0.15s ease;
+}
+
+.lyrics-progress-wrap:hover .lyrics-progress-track,
+.lyrics-progress-wrap:active .lyrics-progress-track,
+.lyrics-progress-wrap.is-scrubbing .lyrics-progress-track {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.lyrics-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #38bdf8, #3b82f6);
+  border-radius: 999px;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
+  position: relative;
+  transition: width 0.1s linear;
+}
+
+.lyrics-progress-thumb {
+  position: absolute;
+  top: 50%;
+  right: -6px;
+  transform: translateY(-50%) scale(0.85);
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 2px solid #38bdf8;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.9), 0 2px 6px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  pointer-events: none;
+}
+
+.lyrics-progress-wrap:hover .lyrics-progress-thumb,
+.lyrics-progress-wrap:active .lyrics-progress-thumb,
+.lyrics-progress-wrap.is-scrubbing .lyrics-progress-thumb {
+  transform: translateY(-50%) scale(1.3);
+  box-shadow: 0 0 18px rgba(56, 189, 248, 1), 0 2px 8px rgba(0, 0, 0, 0.7);
+}
+
+.lyrics-progress-time {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-shadow: var(--text-shadow);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 68px;
+  text-align: right;
+}
+
+/* 歌词滚动视图与动效 */
+.lyrics-scroll-view {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+  will-change: scroll-position;
+  overscroll-behavior: contain;
+}
+
+.lyrics-scroll-view::-webkit-scrollbar { display: none; }
+
+.lyrics-scroll-list {
+  padding: 35px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  will-change: transform;
+}
+
+.lyrics-line {
+  font-size: var(--lyric-font-size, 16px);
+  line-height: 1.48;
+  color: rgba(255, 255, 255, 0.42);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
+  text-align: center;
+  padding: 8px 18px;
+  border-radius: 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  transform-origin: center center;
+  /* 只过渡 GPU 属性 (transform/opacity/filter/color), 无 font-size → 无布局重排 */
+  transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.3, 1),
+              opacity 0.5s cubic-bezier(0.2, 0.9, 0.3, 1),
+              filter 0.5s cubic-bezier(0.2, 0.9, 0.3, 1),
+              color 0.4s ease,
+              background 0.4s ease,
+              border 0.4s ease,
+              box-shadow 0.5s ease;
+  opacity: 0.42;
+  filter: blur(0.3px);
+  transform: scale(0.92);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  height: auto;
+  min-height: fit-content;
+}
+
+.lyrics-line.active {
+  /* 用 scale 表达放大 → 行高恒定 → 零布局重排, 60fps 无卡顿 */
+  font-size: var(--lyric-font-size, 16px);
+  font-weight: 900;
+  color: #FFFFFF;
+  opacity: 1.0;
+  filter: none;
+  transform: scale(1.16);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(56, 189, 248, 0.08));
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 16px rgba(255, 255, 255, 0.1);
+  z-index: 10;
+  animation: lyricGlow 3s ease-in-out infinite;
+}
+
+@keyframes lyricGlow {
+  0%, 100% {
+    text-shadow: 0 0 18px rgba(56, 189, 248, 0.85), 0 0 34px rgba(59, 130, 246, 0.5), 0 2px 10px rgba(0, 0, 0, 0.95);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 16px rgba(255, 255, 255, 0.1);
+  }
+  50% {
+    text-shadow: 0 0 26px rgba(56, 189, 248, 1), 0 0 50px rgba(59, 130, 246, 0.75), 0 2px 10px rgba(0, 0, 0, 0.95);
+    box-shadow: 0 8px 36px rgba(0, 0, 0, 0.55), inset 0 0 22px rgba(255, 255, 255, 0.16);
+  }
+}
+
+.lyrics-line.near-active {
+  color: rgba(255, 255, 255, 0.68);
+  opacity: 0.68;
+  filter: none;
+  transform: scale(0.96);
+}
+
+.lyrics-line.passed {
+  color: rgba(255, 255, 255, 0.32);
+  opacity: 0.32;
+  filter: blur(0.4px);
+  transform: scale(0.9);
+}
+
+.lyrics-line:hover:not(.active),
+.lyrics-line:active:not(.active) {
+  opacity: 0.88;
+  filter: none;
+  transform: scale(0.98);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* 旋转黑胶唱片与专辑封面背景 */
+.lyrics-vinyl-bg-wrap {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  transform: translate(-50%, -50%);
+  width: 270px;
+  height: 270px;
+  max-width: 82vw;
+  max-height: 82vh;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.85;
+  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vinyl-ambient-glow {
+  position: absolute;
+  inset: -18px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.35) 0%, rgba(59, 130, 246, 0.18) 45%, transparent 72%);
+  filter: blur(22px);
+  pointer-events: none;
+  transition: background 0.8s ease;
+}
+
+.lyrics-vinyl-disc {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #1e293b 0%, #0f172a 35%, #050811 65%, #000000 100%);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.92), inset 0 0 15px rgba(255, 255, 255, 0.08);
+  position: relative;
+  animation: vinylSpin 24s linear infinite;
+  animation-play-state: paused;
+}
+
+@keyframes vinylSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 黑胶同心音轨纹理 */
+.vinyl-groove {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.groove-outer { width: 88%; height: 88%; border: 1px solid rgba(255, 255, 255, 0.06); }
+.groove-mid { width: 74%; height: 74%; border: 1px solid rgba(255, 255, 255, 0.08); }
+.groove-inner { width: 60%; height: 60%; border: 1px solid rgba(255, 255, 255, 0.07); }
+
+/* 黑胶中心贴纸 / 专辑封面 (50% 黄金视觉占比) */
+.vinyl-label-wrap {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 50%;
+  height: 50%;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #1e293b;
+  border: 2.5px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.9), inset 0 0 8px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vinyl-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+  filter: saturate(1.15) contrast(1.05);
+  transition: opacity 0.4s ease;
+}
+
+.vinyl-cover-default {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+}
+
+.vinyl-spindle-hole {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #090d16;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  box-shadow: inset 0 0 4px #000;
+  z-index: 5;
+}
+
+/* 黑胶表面双扇形反射光泽 */
+.vinyl-reflection {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 35deg,
+    rgba(255, 255, 255, 0.10) 0deg,
+    transparent 40deg,
+    rgba(255, 255, 255, 0.06) 90deg,
+    transparent 135deg,
+    rgba(255, 255, 255, 0.10) 180deg,
+    transparent 220deg,
+    rgba(255, 255, 255, 0.06) 270deg,
+    transparent 315deg,
+    rgba(255, 255, 255, 0.10) 360deg
+  );
+  pointer-events: none;
+  mix-blend-mode: screen;
+  z-index: 4;
+}
+
+/* 确保歌词内容始终位于黑胶上方 */
+.lyrics-card {
+  position: relative;
+  overflow: hidden;
+}
+.lyrics-song-info,
+.lyrics-scroll-view {
+  position: relative;
+  z-index: 3;
+}
+
+/* ==================== 横屏专属优化 (音乐区大幅向左扩张，硬件监控紧凑精简) ==================== */
+@media (orientation: landscape) {
+  .dashboard {
+    grid-template-columns: 0.85fr 1.75fr;
+    grid-template-rows: repeat(4, 1fr);
+    gap: 6px;
+    height: 100%;
+  }
+
+  .time-net-card { grid-column: 1; grid-row: 1; min-height: 0; padding: 6px 8px; }
+  .cpu-card { grid-column: 1; grid-row: 2; min-height: 0; padding: 6px 8px; }
+  .gpu-card { grid-column: 1; grid-row: 3; min-height: 0; padding: 6px 8px; }
+  .memdisk-card { grid-column: 1; grid-row: 4; min-height: 0; padding: 6px 8px; }
+
+  .card-model-title {
+    font-size: 9.5px;
+  }
+
+  .card-value {
+    font-size: 15px;
+  }
+
+  .stat-item {
+    padding: 2px 3px;
+  }
+
+  .stat-item-value {
+    font-size: 9.5px;
+  }
+
+  .stat-item-label {
+    font-size: 7.5px;
+  }
+
+  .time-clock-main {
+    font-size: 15px;
+  }
+
+  .time-clock-sec {
+    font-size: 10px;
+  }
+
+  .time-date-sub {
+    font-size: 8.5px;
+    margin-left: 2px;
+  }
+
+  .phone-battery-badge {
+    padding: 1px 4px;
+    gap: 2px;
+  }
+
+  .battery-icon-box {
+    width: 17px;
+    height: 9px;
+  }
+
+  .battery-svg {
+    width: 17px;
+    height: 9px;
+  }
+
+  .battery-pct-text {
+    font-size: 8.5px;
+  }
+
+  .net-item .stat-item-value {
+    font-size: 10px !important;
+  }
+
+  .ring-box {
+    width: 44px;
+    height: 44px;
+  }
+
+  .ring-pct {
+    font-size: 10px;
+  }
+
+  .ring-label {
+    font-size: 7px;
+  }
+
+  .ring-detail {
+    font-size: 7.5px;
+  }
+
+  /* 音乐歌词专区大幅扩张 */
+  .lyrics-card {
+    grid-column: 2;
+    grid-row: 1 / span 4;
+    min-height: 0;
+    overflow: hidden;
+    padding: 10px 14px;
+  }
+
+  .lyrics-vinyl-bg-wrap {
+    width: 320px;
+    height: 320px;
+  }
+
+  .lyrics-controls {
+    left: 8px;
+    gap: 20px;
+  }
+
+  .media-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .media-btn-play {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .lyrics-song-title {
+    font-size: 20px;
+    font-weight: 800;
+  }
+  
+  .lyrics-song-artist {
+    font-size: 13.5px;
+  }
+  
+  .lyrics-scroll-list {
+    padding: 30px 0;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .lyrics-line {
+    font-size: var(--lyric-font-size, 16px);
+    padding: 6px 10px;
+    line-height: 1.45;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    box-sizing: border-box;
+    height: auto;
+    min-height: fit-content;
+  }
+
+  .lyrics-line.active {
+    font-size: calc(var(--lyric-font-size, 16px) * 1.36);
+    font-weight: 900;
+    transform: scale(1.06) !important;
+  }
+}
+
+@media (orientation: landscape) and (min-width: 950px) {
+  .dashboard { grid-template-columns: 0.8fr 1.8fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- 全屏背景层与磨砂遮罩 -->
+<div class="bg-wallpaper" id="bgWallpaper"></div>
+<div class="bg-mask"></div>
+
+<!-- ==================== 极简顶栏 (中间居中显示状态与设置) ==================== -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-title">桌面副屏</div>
+    <div class="topbar-sub" id="serverName">自动连接中...</div>
+  </div>
+
+  <div class="topbar-center">
+    <div class="connection-badge connecting" id="connBadge">
+      <span class="conn-dot pulse"></span>
+      <span id="connText">连接中</span>
+    </div>
+    <button class="topbar-btn" id="topbarSettingsBtn" title="连接与透明度设置">⚙️</button>
+  </div>
+
+  <div class="topbar-right"></div>
+</div>
+
+<!-- ==================== 主体区域 ==================== -->
+<div class="main-wrap">
+<div class="container">
+
+  <!-- 连接与无级透明度控制面板 (默认隐藏，点击 ⚙️ 展开) -->
+  <div class="config-panel hidden" id="configPanel">
+    <div class="config-title">🎛️ 无级视觉调节</div>
+    <div class="slider-group">
+      <div class="slider-row">
+        <span class="slider-label">✨ 卡片透明度:</span>
+        <input type="range" class="slider-input" id="opacitySlider" min="0" max="100" value="25">
+        <span class="slider-val" id="opacityVal">25%</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">🌫️ 磨砂模糊度:</span>
+        <input type="range" class="slider-input" id="blurSlider" min="0" max="30" value="14">
+        <span class="slider-val" id="blurVal">14px</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">🔤 歌词字号大小:</span>
+        <input type="range" class="slider-input" id="lyricFontSizeSlider" min="12" max="28" value="16">
+        <span class="slider-val" id="lyricFontSizeVal">16px</span>
+      </div>
+    </div>
+
+    <div class="config-title" style="margin-top:10px">🔗 连接与壁纸设置</div>
+    <div class="input-group">
+      <input class="input-field" id="ipInput" placeholder="电脑IP地址" value="" autocomplete="off">
+      <input class="input-field" id="portInput" placeholder="端口" value="8765" style="max-width:80px" autocomplete="off">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="connectBtn" style="flex:1">连接</button>
+      <button class="btn btn-secondary" id="discoverBtn">自动发现</button>
+      <button class="btn btn-secondary" id="clearWpBtn">重置壁纸</button>
+    </div>
+    <div style="font-size:11px; color:var(--text-muted); margin-top:8px">
+      💡 提示：在电脑浏览器打开 <span id="pcWebTip" style="color:var(--accent-cyan)">http://[电脑IP]:8080/settings.html</span> 可在 PC 端直接裁剪壁纸与调节透明度！
+    </div>
+    <div class="discovered-list" id="discoveredList"></div>
+  </div>
+
+  <!-- 仪表盘 -->
+  <div class="dashboard" id="dashboard">
+
+    <!-- 桌面时钟、手机电量与电脑实时网速卡片 -->
+    <div class="card time-net-card">
+      <div class="card-header">
+        <div class="time-clock-wrap">
+          <span class="time-clock-main" id="dashClock">00:00</span>
+          <span class="time-clock-sec" id="dashClockSec">:00</span>
+          <span class="time-date-sub" id="dashDate">--月--日 周--</span>
+        </div>
+        <div class="phone-battery-badge" id="phoneBatteryBadge">
+          <span class="battery-icon-box">
+            <svg class="battery-svg" viewBox="0 0 26 14">
+              <rect x="1" y="1" width="21" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+              <rect id="batteryFillBar" x="2.5" y="2.5" width="16" height="9" rx="1.5" fill="var(--accent-green)"/>
+              <path d="M23 4.5v5c0.8 0 1.5-0.8 1.5-2.5s-0.7-2.5-1.5-2.5z" fill="currentColor"/>
+            </svg>
+            <span class="battery-charge-bolt" id="batteryBolt" style="display:none">⚡</span>
+          </span>
+          <span class="battery-pct-text" id="batteryPct">--%</span>
+        </div>
+      </div>
+      <div class="stats-row stats-row-2 net-stats-row">
+        <div class="stat-item net-item">
+          <div class="stat-item-value cyan" id="netDownSpeed">0.0 KB/s</div>
+          <div class="stat-item-label">⬇️ 电脑下载</div>
+        </div>
+        <div class="stat-item net-item">
+          <div class="stat-item-value green" id="netUpSpeed">0.0 KB/s</div>
+          <div class="stat-item-label">⬆️ 电脑上传</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CPU 卡片 (含品牌 Logo & 型号 & 核心数 & 频率 & 功耗) -->
+    <div class="card cpu-card">
+      <div class="card-header">
+        <div class="card-title-wrap">
+          <span class="brand-logo-icon" id="cpuBrandLogo">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M2 17.5V6.5L7.5 12L2 17.5Z" fill="#ED1C24"/><path d="M6.5 2H17.5L12 7.5H6.5V2Z" fill="#ED1C24"/><path d="M22 2H18.5V18.5H2V22H22V2Z" fill="#ED1C24"/></svg>
+          </span>
+          <span class="card-model-title" id="cpuModel">AMD Ryzen 5 5600X</span>
+        </div>
+        <div class="card-value green" id="cpuOverall">—</div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-item">
+          <div class="stat-item-value" id="cpuCores">—</div>
+          <div class="stat-item-label">核心 / 线程</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-item-value" id="cpuFreq">—</div>
+          <div class="stat-item-label">主频 MHz</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-item-value" id="cpuPower">—</div>
+          <div class="stat-item-label">功耗 W</div>
+        </div>
+      </div>
+      <div class="cpu-grid" id="cpuGrid"></div>
+    </div>
+
+    <!-- GPU 卡片 (含品牌 Logo & 型号 & 使用率 & 功耗) -->
+    <div class="card gpu-card">
+      <div class="card-header">
+        <div class="card-title-wrap">
+          <span class="brand-logo-icon" id="gpuBrandLogo">
+            <svg viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="4" fill="#0071C5"/><text x="12" y="16" font-family="sans-serif" font-weight="900" font-size="10" fill="#FFF" text-anchor="middle">intel</text></svg>
+          </span>
+          <span class="card-model-title" id="gpuModel">Intel Arc A750</span>
+        </div>
+        <div class="card-value cyan" id="gpuOverall">—</div>
+      </div>
+      <div class="stats-row stats-row-2">
+        <div class="stat-item">
+          <div class="stat-item-value" id="gpuPower">—</div>
+          <div class="stat-item-label">显卡功耗 W</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-item-value" id="gpuTdp">150 W</div>
+          <div class="stat-item-label">设计 TDP</div>
+        </div>
+      </div>
+      <div class="stats-row stats-row-2">
+        <div class="stat-item">
+          <div class="stat-item-value" id="gpuFreq">—</div>
+          <div class="stat-item-label">核心频率 MHz</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-item-value" id="gpuTemp">—</div>
+          <div class="stat-item-label">核心温度 °C</div>
+        </div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-bg"><div class="bar-fill" id="gpuBarFill"></div></div>
+      </div>
+    </div>
+
+    <!-- 内存 & 磁盘 卡片 (全新自适应高精度矢量双环) -->
+    <div class="card memdisk-card">
+      <div class="ring-row">
+        <!-- 内存环 -->
+        <div class="ring-container">
+          <div class="ring-box">
+            <svg class="ring-svg" viewBox="0 0 56 56">
+              <circle class="ring-bg" cx="28" cy="28" r="22" stroke-width="4.5" fill="none"/>
+              <circle class="ring-fg ring-fg-mem" id="memRing" cx="28" cy="28" r="22" stroke-width="4.5" fill="none"
+                stroke="var(--accent-blue)" stroke-dasharray="138.23" stroke-dashoffset="138.23"/>
+            </svg>
+            <div class="ring-text">
+              <span class="ring-pct" id="memPct">—</span>
+              <span class="ring-label">内存</span>
+            </div>
+          </div>
+          <div class="ring-detail" id="memDetail">—</div>
+        </div>
+
+        <!-- 磁盘环 -->
+        <div class="ring-container">
+          <div class="ring-box">
+            <svg class="ring-svg" viewBox="0 0 56 56">
+              <circle class="ring-bg" cx="28" cy="28" r="22" stroke-width="4.5" fill="none"/>
+              <circle class="ring-fg ring-fg-disk" id="diskRing" cx="28" cy="28" r="22" stroke-width="4.5" fill="none"
+                stroke="var(--accent-purple)" stroke-dasharray="138.23" stroke-dashoffset="138.23"/>
+            </svg>
+            <div class="ring-text">
+              <span class="ring-pct" id="diskPct">—</span>
+              <span class="ring-label">磁盘</span>
+            </div>
+          </div>
+          <div class="ring-detail" id="diskDetail">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 歌词卡片 (右侧大屏沉浸展示) -->
+    <div class="card lyrics-card">
+      <!-- 动态旋转黑胶唱片与专辑封面背景 -->
+      <div class="lyrics-vinyl-bg-wrap" id="lyricsVinylWrap">
+        <div class="vinyl-ambient-glow"></div>
+        <div class="lyrics-vinyl-disc" id="lyricsVinylDisc">
+          <div class="vinyl-groove groove-outer"></div>
+          <div class="vinyl-groove groove-mid"></div>
+          <div class="vinyl-groove groove-inner"></div>
+          <div class="vinyl-label-wrap">
+            <img class="vinyl-cover-img" id="vinylCoverImg" src="" alt="Album Cover" style="display:none;" />
+            <div class="vinyl-cover-default" id="vinylCoverDefault">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5">
+                <circle cx="12" cy="12" r="10"/><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+              </svg>
+            </div>
+            <div class="vinyl-spindle-hole"></div>
+          </div>
+          <div class="vinyl-reflection"></div>
+        </div>
+      </div>
+
+      <div class="lyrics-song-info">
+        <div class="lyrics-title-row">
+          <div class="lyrics-controls">
+            <button class="media-btn" id="mediaPrevBtn" title="上一首">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+            </button>
+            <button class="media-btn media-btn-play" id="mediaPlayBtn" title="播放/暂停">
+              <svg id="playIconSvg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <button class="media-btn" id="mediaNextBtn" title="下一首">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+            </button>
+          </div>
+          <div class="lyrics-song-title" id="lyricTitle">等待音乐播放...</div>
+        </div>
+        <div class="lyrics-song-artist" id="lyricArtist">—</div>
+        <div class="lyrics-progress-row">
+          <div class="lyrics-progress-wrap" id="lyricsProgressBar">
+            <div class="lyrics-progress-track">
+              <div class="lyrics-progress-fill" id="lyricProgress">
+                <div class="lyrics-progress-thumb" id="lyricThumb"></div>
+              </div>
+            </div>
+          </div>
+          <div class="lyrics-progress-time" id="lyricTime">0:00 / 0:00</div>
+        </div>
+      </div>
+      <div class="lyrics-scroll-view" id="lyricsScrollView">
+        <div class="lyrics-scroll-list" id="lyricsScrollList">
+          <div class="lyrics-line">暂无歌词</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+// ==============================================================================
+// 品牌 Logo 矢量资源 (SVG)
+// ==============================================================================
+const LOGOS = {
+  amd: '<svg viewBox="0 0 24 24" fill="none"><path d="M2 17.5V6.5L7.5 12L2 17.5Z" fill="#ED1C24"/><path d="M6.5 2H17.5L12 7.5H6.5V2Z" fill="#ED1C24"/><path d="M22 2H18.5V18.5H2V22H22V2Z" fill="#ED1C24"/></svg>',
+  intel: '<svg viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="4" fill="#0071C5"/><text x="12" y="16" font-family="sans-serif" font-weight="900" font-size="10" fill="#FFF" text-anchor="middle">intel</text></svg>',
+  nvidia: '<svg viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="4" fill="#76B900"/><path d="M6 14.5c2-2.5 4.5-3.5 7.5-3-1.8 1-2.8 2-3.5 3.8-1.8 0-2.8-.3-4-.8z" fill="#FFF"/><path d="M7 9c3.5-3 8-3.5 11.5-1.5-3.5 1.5-5 3.5-6 6.5-2.5-.5-4-2-5.5-5z" fill="#FFF" opacity="0.9"/></svg>',
+  default_cpu: '<svg viewBox="0 0 24 24" fill="none"><rect x="5" y="5" width="14" height="14" rx="2" stroke="#3B82F6" stroke-width="2"/><rect x="9" y="9" width="6" height="6" fill="#3B82F6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" stroke="#3B82F6" stroke-width="2"/></svg>',
+  default_gpu: '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="2" stroke="#06B6D4" stroke-width="2"/><circle cx="8" cy="12" r="2.5" stroke="#06B6D4" stroke-width="1.5"/><circle cx="16" cy="12" r="2.5" stroke="#06B6D4" stroke-width="1.5"/><path d="M6 18v2M18 18v2" stroke="#06B6D4" stroke-width="2"/></svg>'
+};
+
+// ==============================================================================
+// 全局状态
+// ==============================================================================
+const State = {
+  ws: null,
+  connected: false,
+  connectionToken: 0,
+  reconnectTimer: null,
+  reconnectAttempts: 0,
+  maxReconnectAttempts: 100000,
+  reconnectBaseDelay: 1000,
+  ip: '',
+  port: 8765,
+  cardOpacity: 0.25,
+  cardBlur: 14,
+  discoveredServers: [],
+  discoveryTimer: null,
+  isNative: typeof window.AndroidBridge !== 'undefined',
+  wallpaperData: '',
+  lastAppIcon: '',
+  lyrics: {
+    lines: [],
+    currentIndex: -1,
+    currentTime: 0,
+    duration: 0,
+    title: '',
+    artist: '',
+    album: '',
+    lastServerTime: 0,
+    lastLocalTime: 0
+  }
+};
+
+// ==============================================================================
+// 无级半透明度与毛玻璃控制引擎
+// ==============================================================================
+function setCardOpacity(pct) {
+  State.cardOpacity = Math.max(0, Math.min(100, pct)) / 100;
+  document.documentElement.style.setProperty('--card-opacity', State.cardOpacity);
+  const valEl = document.getElementById('opacityVal');
+  const slider = document.getElementById('opacitySlider');
+  if (valEl) valEl.textContent = `${Math.round(pct)}%`;
+  if (slider && parseInt(slider.value) !== Math.round(pct)) slider.value = Math.round(pct);
+  try { localStorage.setItem('secdisp_card_opacity', Math.round(pct)); } catch(e) {}
+}
+
+function setCardBlur(px) {
+  State.cardBlur = Math.max(0, Math.min(40, px));
+  document.documentElement.style.setProperty('--card-blur', `${State.cardBlur}px`);
+  const valEl = document.getElementById('blurVal');
+  const slider = document.getElementById('blurSlider');
+  if (valEl) valEl.textContent = `${State.cardBlur}px`;
+  if (slider && parseInt(slider.value) !== State.cardBlur) slider.value = State.cardBlur;
+  try { localStorage.setItem('secdisp_card_blur', State.cardBlur); } catch(e) {}
+}
+
+function loadSavedOpacitySettings() {
+  try {
+    const op = localStorage.getItem('secdisp_card_opacity');
+    if (op != null) setCardOpacity(parseInt(op));
+    const bl = localStorage.getItem('secdisp_card_blur');
+    if (bl != null) setCardBlur(parseInt(bl));
+  } catch(e) {}
+}
+
+// ==============================================================================
+// 智能背景亮度识别与字体深浅自适应算法
+// ==============================================================================
+function analyzeAndApplyLuminance(img) {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 36;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, 64, 36);
+
+    const imgData = ctx.getImageData(0, 0, 64, 36).data;
+    let totalLuminance = 0;
+    let count = 0;
+
+    for (let i = 0; i < imgData.length; i += 16) {
+      const r = imgData[i];
+      const g = imgData[i + 1];
+      const b = imgData[i + 2];
+      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+      totalLuminance += lum;
+      count++;
+    }
+
+    const avgLum = count > 0 ? totalLuminance / count : 128;
+    if (avgLum > 130) {
+      document.body.classList.add('theme-light');
+    } else {
+      document.body.classList.remove('theme-light');
+    }
+  } catch(e) {}
+}
+
+// ==============================================================================
+// 壁纸管理与渲染
+// ==============================================================================
+function setWallpaper(src) {
+  if (!src) {
+    const bg = document.getElementById('bgWallpaper');
+    if (bg) {
+      bg.style.backgroundImage = '';
+      bg.classList.remove('loaded');
+    }
+    document.body.classList.remove('theme-light');
+    try { localStorage.removeItem('secdisp_wp'); } catch(e) {}
+    return;
+  }
+  State.wallpaperData = src;
+  const bg = document.getElementById('bgWallpaper');
+  if (bg) {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      bg.style.backgroundImage = `url("${src}")`;
+      bg.classList.add('loaded');
+      analyzeAndApplyLuminance(img);
+    };
+    img.onerror = () => {
+      bg.style.backgroundImage = `url("${src}")`;
+      bg.classList.add('loaded');
+    };
+    img.src = src;
+  }
+  try { localStorage.setItem('secdisp_wp', src); } catch(e) {}
+}
+
+function loadSavedWallpaper() {
+  try {
+    const saved = localStorage.getItem('secdisp_wp');
+    if (saved) setWallpaper(saved);
+  } catch(e) {}
+}
+
+// ==============================================================================
+// 本地配置与持久化
+// ==============================================================================
+function saveConfig() {
+  const config = { ip: State.ip, port: State.port };
+  try { localStorage.setItem('secdisp_config', JSON.stringify(config)); } catch(e) {}
+}
+
+function loadConfig() {
+  try {
+    const config = JSON.parse(localStorage.getItem('secdisp_config') || '{}');
+    if (config.ip) {
+      State.ip = config.ip;
+      const el = document.getElementById('ipInput');
+      if (el) el.value = config.ip;
+    }
+    if (config.port) {
+      State.port = config.port;
+      const el = document.getElementById('portInput');
+      if (el) el.value = config.port;
+    }
+  } catch(e) {}
+
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const urlIp = params.get('ip');
+    const urlPort = params.get('port');
+    if (urlIp) {
+      State.ip = urlIp;
+      const el = document.getElementById('ipInput');
+      if (el) el.value = urlIp;
+    }
+    if (urlPort) {
+      State.port = parseInt(urlPort) || 8765;
+      const el = document.getElementById('portInput');
+      if (el) el.value = State.port;
+    }
+  } catch(e) {}
+
+  updatePcWebTip();
+}
+
+function updatePcWebTip() {
+  const tip = document.getElementById('pcWebTip');
+  if (tip && State.ip) {
+    tip.textContent = `http://${State.ip}:8080/settings.html`;
+  }
+}
+
+// ==============================================================================
+// 连接状态管理
+// ==============================================================================
+function setConnectionStatus(status, text) {
+  const badge = document.getElementById('connBadge');
+  const connText = document.getElementById('connText');
+  if (badge) badge.className = 'connection-badge ' + status;
+  if (connText) connText.textContent = text;
+  const dot = badge?.querySelector('.conn-dot');
+  if (dot) {
+    if (status === 'connecting') dot.classList.add('pulse');
+    else dot.classList.remove('pulse');
+  }
+}
+
+// ==============================================================================
+// WebSocket 连接与管理
+// ==============================================================================
+function connect(ip, port) {
+  if (State.reconnectTimer) {
+    clearTimeout(State.reconnectTimer);
+    State.reconnectTimer = null;
+  }
+  if (State.ws) {
+    try { State.ws.close(); } catch(e) {}
+    State.ws = null;
+  }
+
+  const token = ++State.connectionToken;
+  State.ip = ip;
+  State.port = parseInt(port) || 8765;
+  saveConfig();
+  updatePcWebTip();
+
+  const url = `ws://${State.ip}:${State.port}`;
+  setConnectionStatus('connecting', '连接中');
+
+  try {
+    State.ws = new WebSocket(url);
+  } catch(e) {
+    setConnectionStatus('disconnected', '连接失败');
+    scheduleReconnect();
+    return;
+  }
+
+  State.ws.onopen = () => {
+    if (token !== State.connectionToken) return;
+    State.connected = true;
+    State.reconnectAttempts = 0;
+    setConnectionStatus('connected', '已连接');
+    const panel = document.getElementById('configPanel');
+    if (panel && !panel.classList.contains('hidden')) {
+      panel.classList.add('hidden');
+    }
+  };
+
+  State.ws.onmessage = (event) => {
+    if (token !== State.connectionToken) return;
+    try {
+      const msg = JSON.parse(event.data);
+      handleMessage(msg);
+    } catch(e) {}
+  };
+
+  State.ws.onerror = (err) => {};
+
+  State.ws.onclose = () => {
+    if (token !== State.connectionToken) return;
+    State.connected = false;
+    setConnectionStatus('disconnected', '已断开');
+    scheduleReconnect();
+  };
+}
+
+function scheduleReconnect() {
+  if (State.reconnectTimer) clearTimeout(State.reconnectTimer);
+  if (!State.ip) {
+    startDiscovery();
+    return;
+  }
+  State.reconnectAttempts++;
+  const delay = Math.min(State.reconnectBaseDelay * Math.pow(1.4, Math.min(State.reconnectAttempts - 1, 10)), 15000);
+  setConnectionStatus('connecting', `重连中 (${State.reconnectAttempts})`);
+  State.reconnectTimer = setTimeout(() => connect(State.ip, State.port), delay);
+}
+
+function manualReconnect() {
+  if (State.reconnectTimer) {
+    clearTimeout(State.reconnectTimer);
+    State.reconnectTimer = null;
+  }
+  State.reconnectAttempts = 0;
+  if (State.ip) connect(State.ip, State.port);
+  else startDiscovery();
+}
+
+function sendMsg(obj) {
+  if (State.ws && State.connected) {
+    try { State.ws.send(JSON.stringify(obj)); } catch(e) {}
+  }
+}
+
+/**
+ * 手机音量键桥接入口 (由 Android 原生 MainActivity 调用):
+ * 将音量键按下转发为 WS volume 指令, 由 PC 端调整系统音量。
+ */
+window.sendVolumeCmd = function(action) {
+  sendMsg({ type: "volume", action: action });
+};
+
+// ==============================================================================
+// 消息分发与处理
+// ==============================================================================
+function handleMessage(msg) {
+  switch (msg.type) {
+    case 'connected':
+      handleConnected(msg.data);
+      break;
+    case 'stats':
+      handleStats(msg.data);
+      break;
+    case 'lyrics':
+      handleLyrics(msg.data);
+      break;
+    case 'wallpaper_update':
+      if (msg.data) {
+        const wpSrc = msg.data.image || (msg.data.url?.startsWith('http') ? msg.data.url : `http://${State.ip}:8080${msg.data.url}`);
+        if (wpSrc) setWallpaper(wpSrc);
+      }
+      break;
+    case 'ota_reload':
+      console.log('[OTA] 收到服务端热重载指令，正在自动 OTA 热更新...');
+      if (State.ip && window.location.protocol === 'file:') {
+        window.location.href = `http://${State.ip}:8080/index.html?t=${Date.now()}`;
+      } else {
+        window.location.reload();
+      }
+      break;
+    case 'config_update':
+      if (msg.data) {
+        if (msg.data.card_opacity != null) setCardOpacity(msg.data.card_opacity * 100);
+        if (msg.data.card_blur != null) setCardBlur(msg.data.card_blur);
+      }
+      break;
+  }
+}
+
+function handleConnected(data) {
+  const srv = document.getElementById('serverName');
+  if (srv) srv.textContent = data.hostname || '桌面电脑';
+  const wpSrc = data.wallpaper_image || (data.wallpaper_url?.startsWith('http') ? data.wallpaper_url : (data.wallpaper_url ? `http://${State.ip}:8080${data.wallpaper_url}` : ''));
+  if (wpSrc) setWallpaper(wpSrc);
+}
+
+function getColorClass(value, yellowThresh = 70, redThresh = 88) {
+  if (value >= redThresh) return 'red';
+  if (value >= yellowThresh) return 'yellow';
+  return 'green';
+}
+
+function formatNetSpeed(bytesPerSec) {
+  if (!bytesPerSec || bytesPerSec <= 0) return '0.0 KB/s';
+  if (bytesPerSec >= 1048576) {
+    return `${(bytesPerSec / 1048576).toFixed(1)} MB/s`;
+  }
+  return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
+}
+
+function updateClockAndDate() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  
+  const clockEl = document.getElementById('dashClock');
+  const secEl = document.getElementById('dashClockSec');
+  const dateEl = document.getElementById('dashDate');
+
+  if (clockEl) clockEl.textContent = `${h}:${m}`;
+  if (secEl) secEl.textContent = `:${s}`;
+  
+  if (dateEl) {
+    const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    const month = now.getMonth() + 1;
+    const date = now.getDate();
+    const dayStr = days[now.getDay()];
+    dateEl.textContent = `${month}月${date}日 ${dayStr}`;
+  }
+}
+
+function initBatteryMonitor() {
+  if ('getBattery' in navigator) {
+    navigator.getBattery().then(battery => {
+      function updateBatteryUI() {
+        const level = Math.round(battery.level * 100);
+        const isCharging = battery.charging;
+        
+        const pctEl = document.getElementById('batteryPct');
+        const barEl = document.getElementById('batteryFillBar');
+        const boltEl = document.getElementById('batteryBolt');
+
+        if (pctEl) pctEl.textContent = `${level}%`;
+        if (barEl) {
+          const width = Math.max(1, Math.min(16, (level / 100) * 16));
+          barEl.setAttribute('width', width.toFixed(1));
+          if (level <= 20 && !isCharging) {
+            barEl.setAttribute('fill', 'var(--accent-red)');
+          } else if (level <= 40) {
+            barEl.setAttribute('fill', 'var(--accent-yellow)');
+          } else {
+            barEl.setAttribute('fill', 'var(--accent-green)');
+          }
+        }
+        if (boltEl) {
+          boltEl.style.display = isCharging ? 'block' : 'none';
+        }
+      }
+      updateBatteryUI();
+      battery.addEventListener('levelchange', updateBatteryUI);
+      battery.addEventListener('chargingchange', updateBatteryUI);
+    }).catch(() => {});
+  }
+}
+
+function handleStats(d) {
+  if (!d) return;
+
+  // 1. 实时电脑网速监控 (下载 / 上传)
+  if (d.network) {
+    const downBytes = d.network.recv_bytes_per_sec != null ? d.network.recv_bytes_per_sec : (d.network.recv_rate_kbps ? d.network.recv_rate_kbps * 128 : 0);
+    const upBytes = d.network.sent_bytes_per_sec != null ? d.network.sent_bytes_per_sec : (d.network.sent_rate_kbps ? d.network.sent_rate_kbps * 128 : 0);
+
+    const downEl = document.getElementById('netDownSpeed');
+    if (downEl) downEl.textContent = formatNetSpeed(downBytes);
+
+    const upEl = document.getElementById('netUpSpeed');
+    if (upEl) upEl.textContent = formatNetSpeed(upBytes);
+  }
+
+  // 2. 硬件信息与型号 + 品牌 Logo
+  if (d.hardware) {
+    const cpuHw = d.hardware.cpu || {};
+    const cpuModelEl = document.getElementById('cpuModel');
+    const cpuLogoEl = document.getElementById('cpuBrandLogo');
+    if (cpuModelEl && cpuHw.name) {
+      let cleanCpu = cpuHw.name.replace(/Processor/gi, '').replace(/\(R\)|\(TM\)/gi, '').trim();
+      cpuModelEl.textContent = cleanCpu;
+    }
+    if (cpuLogoEl && cpuHw.brand) {
+      const b = (cpuHw.brand || '').toLowerCase();
+      cpuLogoEl.innerHTML = LOGOS[b] || LOGOS.default_cpu;
+    }
+
+    const gpuHw = d.hardware.gpu || {};
+    const gpuModelEl = document.getElementById('gpuModel');
+    const gpuLogoEl = document.getElementById('gpuBrandLogo');
+    if (gpuModelEl && gpuHw.name) {
+      let cleanGpu = gpuHw.name.replace(/\(R\)|\(TM\)|Graphics/gi, '').trim();
+      gpuModelEl.textContent = cleanGpu;
+    }
+    if (gpuLogoEl && gpuHw.brand) {
+      const b = (gpuHw.brand || '').toLowerCase();
+      gpuLogoEl.innerHTML = LOGOS[b] || LOGOS.default_gpu;
+    }
+    const gpuTdpEl = document.getElementById('gpuTdp');
+    if (gpuTdpEl) gpuTdpEl.textContent = gpuHw.tdp_w ? `${gpuHw.tdp_w} W` : '150 W';
+  }
+
+  // 3. CPU 动态数据
+  if (d.cpu) {
+    const overall = d.cpu.overall || 0;
+    const cpuEl = document.getElementById('cpuOverall');
+    if (cpuEl) {
+      cpuEl.textContent = overall.toFixed(1) + '%';
+      cpuEl.className = 'card-value ' + getColorClass(overall);
+    }
+    
+    const coresEl = document.getElementById('cpuCores');
+    if (coresEl) {
+      const hw = d.hardware?.cpu;
+      if (hw && hw.cores && hw.threads) {
+        coresEl.textContent = `${hw.cores}核 / ${hw.threads}线程`;
+      } else if (d.cpu.core_count) {
+        coresEl.textContent = `${d.cpu.core_count} 线程`;
+      } else {
+        coresEl.textContent = '—';
+      }
+    }
+
+    const freqEl = document.getElementById('cpuFreq');
+    if (freqEl) {
+      const freq = d.cpu.freq_mhz || d.cpu.freq_current;
+      freqEl.textContent = freq ? `${Math.round(freq)} MHz` : '—';
+    }
+
+    if (d.cpu.per_core && Array.isArray(d.cpu.per_core)) {
+      renderCpuGrid(d.cpu.per_core);
+    }
+  }
+
+  // 4. GPU 动态数据
+  const gpuUsage = d.gpu?.percent != null ? d.gpu.percent : (d.perf_history?.gpu?.slice(-1)[0] ?? 0);
+  const gpuEl = document.getElementById('gpuOverall');
+  if (gpuEl) {
+    gpuEl.textContent = gpuUsage.toFixed(1) + '%';
+    gpuEl.className = 'card-value ' + (gpuUsage > 85 ? 'red' : (gpuUsage > 60 ? 'yellow' : 'cyan'));
+  }
+  const gpuBarFill = document.getElementById('gpuBarFill');
+  if (gpuBarFill) {
+    gpuBarFill.style.width = Math.min(100, Math.max(0, gpuUsage)) + '%';
+  }
+
+  // 5. 功耗数据
+  if (d.power) {
+    const cpuPowEl = document.getElementById('cpuPower');
+    if (cpuPowEl) cpuPowEl.textContent = d.power.cpu_w != null ? `${d.power.cpu_w.toFixed(1)} W` : '—';
+    const gpuPowEl = document.getElementById('gpuPower');
+    if (gpuPowEl) gpuPowEl.textContent = d.power.gpu_w != null ? `${d.power.gpu_w.toFixed(1)} W` : '—';
+  }
+
+  // 5.5 GPU 核心频率 / 温度 (来自 LibreHardwareMonitor, 未安装则显示 —)
+  const gpuFreqEl = document.getElementById('gpuFreq');
+  if (gpuFreqEl) {
+    gpuFreqEl.textContent = d.gpu?.freq_mhz != null ? `${Math.round(d.gpu.freq_mhz)} MHz` : '—';
+  }
+  const gpuTempEl = document.getElementById('gpuTemp');
+  if (gpuTempEl) {
+    gpuTempEl.textContent = d.gpu?.temp_c != null ? `${Math.round(d.gpu.temp_c)}°C` : '—';
+  }
+
+  // 6. 内存
+  if (d.memory) {
+    const pct = d.memory.percent || 0;
+    const ring = document.getElementById('memRing');
+    if (ring) ring.style.strokeDashoffset = 138.23 * (1 - pct / 100);
+    const pctEl = document.getElementById('memPct');
+    if (pctEl) {
+      pctEl.textContent = Math.round(pct) + '%';
+      pctEl.style.color = pct > 85 ? 'var(--accent-red)' : (pct > 70 ? 'var(--accent-yellow)' : 'var(--accent-blue)');
+    }
+    const detEl = document.getElementById('memDetail');
+    if (detEl) detEl.textContent = `${(d.memory.used_gb || 0).toFixed(1)} / ${(d.memory.total_gb || 0).toFixed(0)} GB`;
+  }
+
+  // 7. 磁盘
+  if (d.disk) {
+    const pct = d.disk.percent || 0;
+    const ring = document.getElementById('diskRing');
+    if (ring) ring.style.strokeDashoffset = 138.23 * (1 - pct / 100);
+    const pctEl = document.getElementById('diskPct');
+    if (pctEl) {
+      pctEl.textContent = Math.round(pct) + '%';
+      pctEl.style.color = pct > 90 ? 'var(--accent-red)' : 'var(--accent-purple)';
+    }
+    const detEl = document.getElementById('diskDetail');
+    if (detEl) detEl.textContent = `${(d.disk.used_gb || 0).toFixed(0)} / ${(d.disk.total_gb || 0).toFixed(0)} GB`;
+  }
+}
+
+function renderCpuGrid(cores) {
+  const container = document.getElementById('cpuGrid');
+  if (!container) return;
+  if (container.children.length !== cores.length) {
+    container.innerHTML = '';
+    cores.forEach((_, i) => {
+      const div = document.createElement('div');
+      div.className = 'cpu-core';
+      div.id = `core_${i}`;
+      div.textContent = `${i + 1}`;
+      container.appendChild(div);
+    });
+  }
+  cores.forEach((val, i) => {
+    const el = document.getElementById(`core_${i}`);
+    if (el) {
+      el.className = 'cpu-core ' + getColorClass(val, 50, 80);
+      el.title = `C${i + 1}: ${val.toFixed(0)}%`;
+    }
+  });
+}
+
+// ==============================================================================
+// 歌词渲染与实时跟跳
+// ==============================================================================
+function handleLyrics(d) {
+  if (!d) return;
+
+  const song = d.song || {};
+  State.lyrics.title = song.title || '等待音乐播放...';
+  State.lyrics.artist = song.artist ? `🎤 ${song.artist}` : '—';
+  State.lyrics.album = song.album || '';
+  State.lyrics.duration = song.duration || 0;
+  State.lyrics.currentTime = d.current_time || 0;
+
+  const titleEl = document.getElementById('lyricTitle');
+  if (titleEl) titleEl.textContent = State.lyrics.title;
+  const artistEl = document.getElementById('lyricArtist');
+  if (artistEl) artistEl.textContent = State.lyrics.artist;
+
+  // 动态旋转黑胶与专辑封面
+  let coverUrl = (song.cover || d.cover || '').trim();
+  if (coverUrl.startsWith('http://')) {
+    coverUrl = 'https://' + coverUrl.substring(7);
+  }
+  const vinylDisc = document.getElementById('lyricsVinylDisc');
+  const vinylWrap = document.getElementById('lyricsVinylWrap');
+  const coverImg = document.getElementById('vinylCoverImg');
+  const coverDef = document.getElementById('vinylCoverDefault');
+
+  if (vinylDisc && vinylWrap) {
+    if (d.playing !== false) {
+      vinylDisc.style.animationPlayState = 'running';
+      vinylWrap.style.opacity = '0.85';
+    } else {
+      vinylDisc.style.animationPlayState = 'paused';
+      vinylWrap.style.opacity = '0.45';
+    }
+
+    if (coverUrl && coverImg) {
+      if (coverImg.getAttribute('data-loaded-src') !== coverUrl) {
+        coverImg.setAttribute('data-loaded-src', coverUrl);
+        coverImg.src = coverUrl;
+        coverImg.style.display = 'block';
+        if (coverDef) coverDef.style.display = 'none';
+        coverImg.onerror = () => {
+          coverImg.style.display = 'none';
+          if (coverDef) coverDef.style.display = 'flex';
+        };
+      }
+    } else if (!coverUrl && coverImg) {
+      coverImg.removeAttribute('data-loaded-src');
+      coverImg.style.display = 'none';
+      if (coverDef) coverDef.style.display = 'flex';
+    }
+  }
+
+  const incomingLines = d.lines || [];
+  const linesChanged = incomingLines.length !== State.lyrics.lines.length ||
+    (incomingLines.length > 0 && incomingLines[0].text !== (State.lyrics.lines[0]?.text || ''));
+
+  if (linesChanged) {
+    State.lyrics.lines = incomingLines;
+    renderLyricsList();
+  }
+
+  const targetIdx = d.current_index != null ? d.current_index : findLyricIndex(State.lyrics.currentTime);
+  updateLyricsCurrentLine(targetIdx);
+  updateLyricsProgress(State.lyrics.currentTime, State.lyrics.duration);
+
+  const playBtn = document.getElementById('mediaPlayBtn');
+  if (playBtn) {
+    const isPlaying = d.playing !== false;
+    const currentAttr = playBtn.getAttribute('data-playing');
+    const targetAttr = isPlaying ? 'true' : 'false';
+    if (currentAttr !== targetAttr) {
+      playBtn.setAttribute('data-playing', targetAttr);
+      if (isPlaying) {
+        playBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+        playBtn.title = '暂停';
+      } else {
+        playBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+        playBtn.title = '播放';
+      }
+    }
+  }
+}
+
+function findLyricIndex(currentTime) {
+  const lines = State.lyrics.lines;
+  if (!lines || !lines.length) return -1;
+  let idx = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].time <= currentTime) idx = i;
+    else break;
+  }
+  return idx;
+}
+
+let isUserScrolling = false;
+let userScrollTimer = null;
+
+function handleUserScrollEvent() {
+  isUserScrolling = true;
+  if (userScrollTimer) clearTimeout(userScrollTimer);
+  userScrollTimer = setTimeout(() => {
+    isUserScrolling = false;
+    scrollToActiveLyric();
+  }, 3500);
+}
+
+let scrollAnim = null;
+function scrollToActiveLyric() {
+  if (isUserScrolling) return;
+  const activeEl = document.getElementById(`lyricLine_${State.lyrics.currentIndex}`);
+  const view = document.getElementById('lyricsScrollView');
+  if (!activeEl || !view) return;
+  const target = Math.max(0, activeEl.offsetTop - (view.clientHeight / 2) + (activeEl.clientHeight / 2));
+  const start = view.scrollTop;
+  const dist = target - start;
+  if (Math.abs(dist) < 1.5) return;
+  if (scrollAnim) cancelAnimationFrame(scrollAnim);
+  const t0 = performance.now();
+  const dur = Math.min(460, Math.max(220, Math.abs(dist) * 0.45));
+  const ease = (t) => 1 - Math.pow(1 - t, 3); // easeOutCubic
+  const step = (now) => {
+    const t = Math.min(1, (now - t0) / dur);
+    view.scrollTop = start + dist * ease(t);
+    if (t < 1) scrollAnim = requestAnimationFrame(step);
+    else scrollAnim = null;
+  };
+  scrollAnim = requestAnimationFrame(step);
+}
+
+function renderLyricsList() {
+  const list = document.getElementById('lyricsScrollList');
+  if (!list) return;
+  list.innerHTML = '';
+  const lines = State.lyrics.lines;
+  if (!lines || !lines.length) {
+    list.innerHTML = '<div class="lyrics-line">暂无歌词</div>';
+    return;
+  }
+
+  lines.forEach((line, i) => {
+    const div = document.createElement('div');
+    div.className = 'lyrics-line';
+    div.id = `lyricLine_${i}`;
+    div.textContent = line.text || '· · ·';
+
+    let lastTap = 0;
+    // 单击/触屏双击跳转识别
+    div.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const now = Date.now();
+      if (now - lastTap < 380) {
+        // 双击跳转
+        if (line.time != null) {
+          sendMediaAction('seek', line.time);
+          div.style.transition = 'transform 0.15s ease';
+          div.style.transform = 'scale(1.15)';
+          setTimeout(() => { div.style.transform = ''; }, 250);
+        }
+        lastTap = 0;
+      } else {
+        lastTap = now;
+      }
+    });
+
+    // PC 浏览器双击跳转
+    div.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      if (line.time != null) {
+        sendMediaAction('seek', line.time);
+        div.style.transition = 'transform 0.15s ease';
+        div.style.transform = 'scale(1.15)';
+        setTimeout(() => { div.style.transform = ''; }, 250);
+      }
+    });
+
+    list.appendChild(div);
+  });
+}
+
+function updateLyricsCurrentLine(index) {
+  const prev = State.lyrics.currentIndex;
+  if (prev === index && index !== -1) return;
+  State.lyrics.currentIndex = index;
+
+  const lines = State.lyrics.lines;
+  if (!lines || !lines.length) return;
+
+  // 增量更新: 只重设 旧/新 active 及其邻近行 (最多 6 个元素), 避免全量遍历
+  const touch = new Set();
+  if (prev >= 0) { touch.add(prev); touch.add(prev - 1); touch.add(prev + 1); }
+  if (index >= 0) { touch.add(index); touch.add(index - 1); touch.add(index + 1); }
+  touch.forEach((i) => {
+    if (i < 0 || i >= lines.length) return;
+    const el = document.getElementById(`lyricLine_${i}`);
+    if (!el) return;
+    if (i === index) el.className = 'lyrics-line active';
+    else if (i === index + 1 || i === index - 1) el.className = 'lyrics-line near-active';
+    else if (i < index) el.className = 'lyrics-line passed';
+    else el.className = 'lyrics-line';
+  });
+
+  scrollToActiveLyric();
+}
+
+let isScrubbing = false;
+let scrubReleaseTimer = null;
+
+function updateLyricsProgress(current, duration) {
+  if (isScrubbing) return;
+  const pct = duration > 0 ? Math.min(100, Math.max(0, (current / duration) * 100)) : 0;
+  const bar = document.getElementById('lyricProgress');
+  if (bar) bar.style.width = pct.toFixed(1) + '%';
+  const timeEl = document.getElementById('lyricTime');
+  if (timeEl) timeEl.textContent = `${formatTime(current)} / ${formatTime(duration)}`;
+}
+
+function formatTime(sec) {
+  sec = Math.max(0, Math.floor(sec || 0));
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+// ==============================================================================
+// 自动发现
+// ==============================================================================
+function startDiscovery() {
+  const list = document.getElementById('discoveredList');
+  if (list) list.innerHTML = '<div class="no-discovery">正在自动探测局域网电脑...</div>';
+  State.discoveredServers = [];
+
+  if (State.isNative && window.AndroidBridge) {
+    try { window.AndroidBridge.startDiscovery(); } catch(e) {}
+  }
+
+  jsHttpScan();
+
+  if (State.discoveryTimer) clearTimeout(State.discoveryTimer);
+  State.discoveryTimer = setTimeout(() => {
+    if (State.discoveredServers.length === 0 && list) {
+      list.innerHTML = '<div class="no-discovery">未发现电脑服务<br>可点击右上角设置手动输入 IP</div>';
+    }
+  }, 6000);
+}
+
+async function jsHttpScan() {
+  const httpPorts = [8080, 8000, 80];
+  const candidates = new Set();
+
+  ['192.168.1.1','192.168.0.1','192.168.31.1','10.0.0.1','192.168.50.1','192.168.2.1',
+   '192.168.8.1','192.168.10.1','192.168.3.1','192.168.4.1','192.168.11.1','192.168.123.1',
+   '192.168.137.1','172.16.0.1','172.20.0.1'].forEach(ip => candidates.add(ip));
+
+  if (State.ip) {
+    const m = State.ip.match(/^(\d+\.\d+\.\d+)\./);
+    if (m) {
+      for (let i = 1; i <= 254; i++) candidates.add(`${m[1]}.${i}`);
+    }
+  }
+
+  const list = Array.from(candidates);
+  const concurrency = 20;
+  let idx = 0;
+
+  async function worker() {
+    while (idx < list.length) {
+      const ip = list[idx++];
+      for (const p of httpPorts) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 400);
+        try {
+          const r = await fetch(`http://${ip}:${p}/api/info`, { signal: ctrl.signal, mode: 'cors' });
+          if (r.ok) {
+            const j = await r.json();
+            if (j && j.ws_port) {
+              window.onDiscoveredServer(j.ip || ip, j.ws_port, j.hostname || '');
+            }
+          }
+        } catch(e) {}
+        finally { clearTimeout(timer); }
+      }
+    }
+  }
+
+  const workers = [];
+  for (let i = 0; i < concurrency; i++) workers.push(worker());
+  await Promise.all(workers);
+}
+
+window.onDiscoveredServer = function(ip, port, hostname) {
+  const server = { ip, port: parseInt(port) || 8765, hostname };
+  if (!State.discoveredServers.find(s => s.ip === ip && s.port === server.port)) {
+    State.discoveredServers.push(server);
+    const list = document.getElementById('discoveredList');
+    if (list) {
+      if (State.discoveredServers.length === 1) list.innerHTML = '';
+      const item = document.createElement('div');
+      item.className = 'discovered-item';
+      item.innerHTML = `<span>🖥️ <b>${hostname || ip}</b> (${ip}:${server.port})</span><span style="color:var(--accent-green);font-size:11px">点击连接</span>`;
+      item.onclick = () => connect(ip, server.port);
+      list.appendChild(item);
+    }
+    if (!State.connected) connect(ip, server.port);
+  }
+};
+
+// ==============================================================================
+// 界面交互与初始化
+// ==============================================================================
+function toggleSettingsPanel() {
+  const panel = document.getElementById('configPanel');
+  if (panel) panel.classList.toggle('hidden');
+}
+
+document.getElementById('topbarSettingsBtn').onclick = toggleSettingsPanel;
+document.getElementById('connectBtn').onclick = () => {
+  const ip = document.getElementById('ipInput').value.trim();
+  const port = document.getElementById('portInput').value.trim();
+  if (ip) connect(ip, port);
+};
+document.getElementById('discoverBtn').onclick = startDiscovery;
+document.getElementById('clearWpBtn').onclick = () => setWallpaper('');
+
+// 歌词字号无级调节
+function setLyricFontSize(val) {
+  val = Math.max(12, Math.min(32, parseInt(val) || 16));
+  document.documentElement.style.setProperty('--lyric-font-size', val + 'px');
+  const slider = document.getElementById('lyricFontSizeSlider');
+  const valEl = document.getElementById('lyricFontSizeVal');
+  if (slider) slider.value = val;
+  if (valEl) valEl.textContent = val + 'px';
+  try {
+    localStorage.setItem('secdisp_lyric_font_size', val.toString());
+  } catch(e) {}
+}
+
+function loadSavedLyricFontSize() {
+  try {
+    const saved = localStorage.getItem('secdisp_lyric_font_size');
+    if (saved) {
+      setLyricFontSize(parseInt(saved));
+    } else {
+      setLyricFontSize(16);
+    }
+  } catch(e) {
+    setLyricFontSize(16);
+  }
+}
+
+// 歌词滚动视图手势监听 (上下滑动时暂停自动滚动，松手 3.5 秒后平滑恢复居中)
+const lyricsScrollViewEl = document.getElementById('lyricsScrollView');
+if (lyricsScrollViewEl) {
+  lyricsScrollViewEl.addEventListener('touchstart', handleUserScrollEvent, { passive: true });
+  lyricsScrollViewEl.addEventListener('touchmove', handleUserScrollEvent, { passive: true });
+  lyricsScrollViewEl.addEventListener('wheel', handleUserScrollEvent, { passive: true });
+  lyricsScrollViewEl.addEventListener('scroll', handleUserScrollEvent, { passive: true });
+}
+
+// 无级滑块事件绑定
+document.getElementById('opacitySlider').oninput = (e) => setCardOpacity(parseFloat(e.target.value));
+document.getElementById('blurSlider').oninput = (e) => setCardBlur(parseFloat(e.target.value));
+const fontSlider = document.getElementById('lyricFontSizeSlider');
+if (fontSlider) {
+  fontSlider.oninput = (e) => setLyricFontSize(parseInt(e.target.value));
+}
+
+// 初始化流程
+loadSavedOpacitySettings();
+loadSavedLyricFontSize();
+loadSavedWallpaper();
+loadConfig();
+updateClockAndDate();
+setInterval(updateClockAndDate, 1000);
+initBatteryMonitor();
+
+if (State.ip) setTimeout(() => manualReconnect(), 150);
+setTimeout(() => {
+  if (!State.connected) startDiscovery();
+}, 400);
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && !State.connected) manualReconnect();
+});
+window.addEventListener('online', () => {
+  if (!State.connected) manualReconnect();
+});
+
+// 媒体控制按键与触控进度条交互
+function sendMediaAction(action, position = 0) {
+  // 单通道: 优先 WebSocket (毫秒级直达), HTTP 仅当 WS 未连接时兜底
+  // 避免 WS + HTTP 双发导致服务器/插件重复执行 toggle 而"失灵"
+  if (State.connected) {
+    sendMsg({ type: 'media_control', action, position });
+  } else {
+    try {
+      fetch(`http://${State.ip || '127.0.0.1'}:8080/api/media_control`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, position })
+      }).catch(() => {});
+    } catch(e) {}
+  }
+}
+
+function bindMediaButton(btn, action) {
+  if (!btn) return;
+  let lastTrigger = 0;
+  const trigger = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const now = Date.now();
+    // 触屏设备: touchend 与合成 click 会双触发, 120ms 内合并为一次
+    if (now - lastTrigger < 120) return;
+    lastTrigger = now;
+    sendMediaAction(action);
+    btn.style.transform = 'scale(0.85)';
+    setTimeout(() => { btn.style.transform = ''; }, 160);
+  };
+  // 统一用 pointerup (兼容鼠标/触屏), 消除 touchend+click 双触发
+  if (window.PointerEvent) {
+    btn.addEventListener('pointerup', trigger);
+  } else {
+    btn.addEventListener('touchend', trigger);
+    btn.addEventListener('click', trigger);
+  }
+}
+
+bindMediaButton(document.getElementById('mediaPrevBtn'), 'prev');
+bindMediaButton(document.getElementById('mediaPlayBtn'), 'play_pause');
+bindMediaButton(document.getElementById('mediaNextBtn'), 'next');
+
+// 歌曲进度条触控与拖拽精准交互
+const progBar = document.getElementById('lyricsProgressBar');
+if (progBar) {
+  function getScrubRatio(e) {
+    const rect = progBar.getBoundingClientRect();
+    let clientX = e.clientX;
+    if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+    } else if (e.changedTouches && e.changedTouches.length > 0) {
+      clientX = e.changedTouches[0].clientX;
+    }
+    if (clientX == null) return 0;
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  }
+
+  function applyScrub(ratio, doSeek = false) {
+    const dur = State.lyrics.duration || 0;
+    const targetTime = ratio * dur;
+    const fill = document.getElementById('lyricProgress');
+    if (fill) fill.style.width = (ratio * 100).toFixed(1) + '%';
+    const timeEl = document.getElementById('lyricTime');
+    if (timeEl) timeEl.textContent = `${formatTime(targetTime)} / ${formatTime(dur)}`;
+    if (doSeek) {
+      sendMediaAction('seek', targetTime);
+    }
+  }
+
+  function onScrubStart(e) {
+    if (e.button != null && e.button !== 0) return;
+    isScrubbing = true;
+    progBar.classList.add('is-scrubbing');
+    if (scrubReleaseTimer) clearTimeout(scrubReleaseTimer);
+    const ratio = getScrubRatio(e);
+    applyScrub(ratio, true);
+    if (e.pointerId != null && progBar.setPointerCapture) {
+      try { progBar.setPointerCapture(e.pointerId); } catch(err) {}
+    }
+  }
+
+  function onScrubMove(e) {
+    if (!isScrubbing) return;
+    const ratio = getScrubRatio(e);
+    applyScrub(ratio, false);
+  }
+
+  function onScrubEnd(e) {
+    if (!isScrubbing) return;
+    const ratio = getScrubRatio(e);
+    applyScrub(ratio, true);
+    progBar.classList.remove('is-scrubbing');
+    if (scrubReleaseTimer) clearTimeout(scrubReleaseTimer);
+    scrubReleaseTimer = setTimeout(() => {
+      isScrubbing = false;
+    }, 450);
+  }
+
+  if (window.PointerEvent) {
+    progBar.addEventListener('pointerdown', onScrubStart);
+    progBar.addEventListener('pointermove', onScrubMove);
+    progBar.addEventListener('pointerup', onScrubEnd);
+    progBar.addEventListener('pointercancel', onScrubEnd);
+  } else {
+    progBar.addEventListener('mousedown', onScrubStart);
+    window.addEventListener('mousemove', onScrubMove);
+    window.addEventListener('mouseup', onScrubEnd);
+    progBar.addEventListener('touchstart', onScrubStart, { passive: true });
+    progBar.addEventListener('touchmove', onScrubMove, { passive: true });
+    progBar.addEventListener('touchend', onScrubEnd, { passive: true });
+  }
+}
+
+setInterval(() => {
+  if (State.connected) sendMsg({ type: 'ping' });
+}, 15000);
+</script>
+</body>
+</html>

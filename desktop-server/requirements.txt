@@ -1,0 +1,4 @@
+psutil>=5.9.0
+websockets>=11.0
+pygetwindow>=0.0.9
+pywin32>=227; platform_system=="Windows"

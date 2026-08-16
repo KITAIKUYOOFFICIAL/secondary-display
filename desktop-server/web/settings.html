@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>桌面副屏 - 壁纸与设置控制台</title>
+<style>
+:root {
+  --bg-primary: #0a0e17;
+  --bg-card: rgba(18, 26, 43, 0.85);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --text-primary: #f0f4fc;
+  --text-secondary: #8a9bb8;
+  --text-muted: #4e5f7a;
+  --accent-blue: #3b82f6;
+  --accent-cyan: #06b6d4;
+  --accent-green: #10b981;
+  --accent-purple: #8b5cf6;
+  --radius-md: 10px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  padding: 24px;
+  min-height: 100vh;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1100px;
+  margin: 0 auto 20px auto;
+}
+
+.title { font-size: 20px; font-weight: 700; }
+.sub { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+
+.main-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 20px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  backdrop-filter: blur(16px);
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 上传与拖拽区域 */
+.dropzone {
+  border: 2px dashed rgba(59, 130, 246, 0.4);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  background: rgba(59, 130, 246, 0.04);
+  transition: all 0.2s;
+  margin-bottom: 14px;
+}
+.dropzone:hover {
+  border-color: var(--accent-blue);
+  background: rgba(59, 130, 246, 0.08);
+}
+.drop-icon { font-size: 32px; margin-bottom: 8px; }
+.drop-tip { font-size: 13px; color: var(--text-secondary); }
+
+/* 裁剪工作区 */
+.cropper-box {
+  position: relative;
+  width: 100%;
+  height: 320px;
+  background: #000;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+#cropCanvas {
+  max-width: 100%;
+  max-height: 100%;
+  cursor: grab;
+}
+#cropCanvas:active { cursor: grabbing; }
+
+/* 裁剪控制栏 */
+.crop-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tool-label { font-size: 12px; color: var(--text-muted); }
+.ratio-btn {
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.ratio-btn.active {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+}
+
+.zoom-slider {
+  flex: 1;
+  min-width: 100px;
+  accent-color: var(--accent-blue);
+}
+
+/* 按钮组 */
+.btn-primary {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+}
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 预览卡片 (完全模拟超通透毛玻璃与自适应文字) */
+.preview-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: #080c14;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.preview-bg {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.preview-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: grid;
+  grid-template-columns: 1.1fr 1.4fr;
+  gap: 8px;
+  padding: 10px;
+  pointer-events: none;
+}
+
+/* 超晶莹通透预览卡片 */
+.mock-card {
+  background: rgba(15, 23, 42, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  font-size: 10px;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  transition: all 0.3s ease;
+}
+
+/* 浅色壁纸自适应类 */
+.preview-container.theme-light .mock-card {
+  background: rgba(255, 255, 255, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  color: #0f172a;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+}
+
+.status-msg {
+  margin-top: 10px;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  text-align: center;
+  display: none;
+}
+.status-msg.success { display: block; background: rgba(16, 185, 129, 0.15); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+.status-msg.error { display: block; background: rgba(239, 68, 68, 0.15); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.3); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="title">🎨 桌面副屏 - 壁纸与设置控制台</div>
+    <div class="sub">在 PC 端自由裁剪壁纸，自动感知亮度配置最佳字体，一键推送到副屏</div>
+  </div>
+  <a href="/index.html" style="color:var(--accent-cyan); font-size:13px; text-decoration:none">打开 Web 仪表盘 ↗</a>
+</div>
+
+<div class="main-grid">
+  <!-- 左侧：图片选择与裁剪器 -->
+  <div class="card">
+    <div class="card-title">🖼️ 壁纸裁剪与编辑</div>
+
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept="image/*" style="display:none">
+      <div class="drop-icon">📁</div>
+      <div class="drop-tip">点击选择或将电脑上的图片拖入此处</div>
+      <div style="font-size:11px; color:var(--text-muted); margin-top:4px">支持 JPG / PNG / WebP / BMP 等</div>
+    </div>
+
+    <div class="cropper-box" id="cropperBox">
+      <canvas id="cropCanvas"></canvas>
+      <div id="noImgTip" style="position:absolute; color:var(--text-muted); font-size:13px">请先上传一张图片</div>
+    </div>
+
+    <div class="crop-tools">
+      <span class="tool-label">比例:</span>
+      <button class="ratio-btn active" data-ratio="16/9">16:9 标准</button>
+      <button class="ratio-btn" data-ratio="19.5/9">19.5:9 全面屏</button>
+      <button class="ratio-btn" data-ratio="20/9">20:9 宽屏</button>
+      <button class="ratio-btn" data-ratio="free">自由</button>
+      <span class="tool-label" style="margin-left:auto">缩放:</span>
+      <input type="range" class="zoom-slider" id="zoomSlider" min="0.5" max="3" step="0.05" value="1" disabled>
+    </div>
+
+    <div style="display:flex; gap:10px; margin-bottom:12px;">
+      <button class="btn-primary" id="pushBtn" style="flex:1.4" disabled>🚀 应用并推送到手机副屏</button>
+      <button class="btn-primary" id="otaBtn" style="flex:1; background:linear-gradient(135deg, #10b981, #06b6d4)">🔄 一键 OTA 热刷新</button>
+    </div>
+    <div class="status-msg" id="statusMsg"></div>
+  </div>
+
+  <!-- 右侧：手机副屏超通透毛玻璃实时预览 -->
+  <div class="card">
+    <div class="card-title">📱 手机副屏实时超通透效果预览</div>
+    <div class="preview-container" id="previewContainer">
+      <div class="preview-bg" id="previewBg"></div>
+      <div class="preview-overlay">
+        <!-- 模拟左侧仪表卡片 -->
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div class="mock-card" style="flex:1">
+            <span style="font-weight:bold; color:var(--accent-green)">● 前台应用 · 60 FPS</span>
+            <span style="opacity:0.85; font-size:8.5px">AVG 60.0 · 1% LOW 58.0</span>
+          </div>
+          <div class="mock-card" style="flex:1.2">
+            <span style="font-weight:bold">AMD Ryzen 5 5600X · 18%</span>
+            <span style="opacity:0.85; font-size:8.5px">6核/12线程 · 4276 MHz</span>
+          </div>
+          <div class="mock-card" style="flex:1">
+            <span style="font-weight:bold; color:var(--accent-cyan)">Intel Arc A750 · 8%</span>
+          </div>
+        </div>
+        <!-- 模拟右侧歌词卡片 -->
+        <div class="mock-card" style="align-items:center; text-align:center;">
+          <span style="font-weight:800; font-size:12px; margin-bottom:4px">ありふれた言葉</span>
+          <span style="color:var(--accent-cyan); font-size:9px; margin-bottom:8px">🎤 きのこ帝国</span>
+          <span style="font-size:13px; font-weight:800; text-shadow:0 0 14px rgba(59,130,246,0.9)">進んで、進んでゆこう</span>
+          <span style="opacity:0.6; font-size:9px; margin-top:6px">· · ·</span>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:12px; color:var(--text-muted); margin-top:12px; line-height:1.5">
+      💡 智能识别：系统会自动计算壁纸亮度，深色壁纸使用<b>高透暗磨砂+纯白亮字</b>，浅色壁纸自动切换为<b>晶莹白磨砂+深黑高对比字</b>！
+    </div>
+  </div>
+</div>
+
+<script>
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const canvas = document.getElementById('cropCanvas');
+const ctx = canvas.getContext('2d');
+const zoomSlider = document.getElementById('zoomSlider');
+const pushBtn = document.getElementById('pushBtn');
+const statusMsg = document.getElementById('statusMsg');
+const previewBg = document.getElementById('previewBg');
+const previewContainer = document.getElementById('previewContainer');
+const noImgTip = document.getElementById('noImgTip');
+
+let currentImg = null;
+let targetRatio = 16 / 9;
+let imgPos = { x: 0, y: 0, scale: 1 };
+let isDragging = false;
+let dragStart = { x: 0, y: 0 };
+
+dropzone.onclick = () => fileInput.click();
+dropzone.ondragover = (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--accent-blue)'; };
+dropzone.ondragleave = () => { dropzone.style.borderColor = 'rgba(59,130,246,0.4)'; };
+dropzone.ondrop = (e) => {
+  e.preventDefault();
+  dropzone.style.borderColor = 'rgba(59,130,246,0.4)';
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+};
+fileInput.onchange = (e) => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+};
+
+function handleFile(file) {
+  if (!file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      currentImg = img;
+      noImgTip.style.display = 'none';
+      zoomSlider.disabled = false;
+      pushBtn.disabled = false;
+      resetCrop();
+      draw();
+      updatePreview();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function resetCrop() {
+  if (!currentImg) return;
+  const box = document.getElementById('cropperBox');
+  canvas.width = box.clientWidth || 500;
+  canvas.height = box.clientHeight || 320;
+
+  const cropW = canvas.width * 0.85;
+  const cropH = targetRatio ? cropW / targetRatio : canvas.height * 0.85;
+
+  const scale = Math.max(cropW / currentImg.width, cropH / currentImg.height);
+  imgPos = {
+    x: canvas.width / 2,
+    y: canvas.height / 2,
+    scale: scale
+  };
+  zoomSlider.value = 1;
+}
+
+document.querySelectorAll('.ratio-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const r = btn.getAttribute('data-ratio');
+    targetRatio = r === 'free' ? null : eval(r);
+    resetCrop();
+    draw();
+    updatePreview();
+  };
+});
+
+zoomSlider.oninput = (e) => {
+  if (!currentImg) return;
+  imgPos.scale = parseFloat(e.target.value);
+  draw();
+  updatePreview();
+};
+
+canvas.onmousedown = (e) => {
+  if (!currentImg) return;
+  isDragging = true;
+  dragStart = { x: e.clientX - imgPos.x, y: e.clientY - imgPos.y };
+};
+window.onmousemove = (e) => {
+  if (!isDragging) return;
+  imgPos.x = e.clientX - dragStart.x;
+  imgPos.y = e.clientY - dragStart.y;
+  draw();
+  updatePreview();
+};
+window.onmouseup = () => { isDragging = false; };
+
+canvas.onwheel = (e) => {
+  e.preventDefault();
+  if (!currentImg) return;
+  const delta = e.deltaY > 0 ? -0.05 : 0.05;
+  const newScale = Math.max(0.2, Math.min(4, imgPos.scale + delta));
+  imgPos.scale = newScale;
+  zoomSlider.value = newScale;
+  draw();
+  updatePreview();
+};
+
+function getCropRect() {
+  const cropW = canvas.width * 0.85;
+  const cropH = targetRatio ? cropW / targetRatio : canvas.height * 0.85;
+  const cropX = (canvas.width - cropW) / 2;
+  const cropY = (canvas.height - cropH) / 2;
+  return { x: cropX, y: cropY, w: cropW, h: cropH };
+}
+
+function draw() {
+  if (!currentImg) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+  ctx.translate(imgPos.x, imgPos.y);
+  ctx.scale(imgPos.scale, imgPos.scale);
+  ctx.drawImage(currentImg, -currentImg.width / 2, -currentImg.height / 2);
+  ctx.restore();
+
+  const crop = getCropRect();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.fillRect(0, 0, canvas.width, crop.y);
+  ctx.fillRect(0, crop.y + crop.h, canvas.width, canvas.height - (crop.y + crop.h));
+  ctx.fillRect(0, crop.y, crop.x, crop.h);
+  ctx.fillRect(crop.x + crop.w, crop.y, canvas.width - (crop.x + crop.w), crop.h);
+
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(crop.x, crop.y, crop.w, crop.h);
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(crop.x + crop.w / 3, crop.y);
+  ctx.lineTo(crop.x + crop.w / 3, crop.y + crop.h);
+  ctx.moveTo(crop.x + crop.w * 2 / 3, crop.y);
+  ctx.lineTo(crop.x + crop.w * 2 / 3, crop.y + crop.h);
+  ctx.moveTo(crop.x, crop.y + crop.h / 3);
+  ctx.lineTo(crop.x + crop.w, crop.y + crop.h / 3);
+  ctx.moveTo(crop.x, crop.y + crop.h * 2 / 3);
+  ctx.lineTo(crop.x + crop.w, crop.y + crop.h * 2 / 3);
+  ctx.stroke();
+}
+
+function getCroppedBase64() {
+  if (!currentImg) return '';
+  const crop = getCropRect();
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = 1920;
+  outCanvas.height = Math.round(1920 * (crop.h / crop.w));
+  const outCtx = outCanvas.getContext('2d');
+
+  outCtx.drawImage(
+    canvas,
+    crop.x, crop.y, crop.w, crop.h,
+    0, 0, outCanvas.width, outCanvas.height
+  );
+  return outCanvas.toDataURL('image/jpeg', 0.88);
+}
+
+function updatePreview() {
+  const b64 = getCroppedBase64();
+  if (b64) {
+    previewBg.style.backgroundImage = `url(${b64})`;
+    // 感知亮度计算
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = 64; c.height = 36;
+      const cx = c.getContext('2d');
+      cx.drawImage(img, 0, 0, 64, 36);
+      const data = cx.getImageData(0, 0, 64, 36).data;
+      let total = 0, count = 0;
+      for (let i = 0; i < data.length; i += 16) {
+        total += 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+        count++;
+      }
+      const lum = count > 0 ? total / count : 128;
+      if (lum > 130) previewContainer.classList.add('theme-light');
+      else previewContainer.classList.remove('theme-light');
+    };
+    img.src = b64;
+  }
+}
+
+pushBtn.onclick = async () => {
+  const b64 = getCroppedBase64();
+  if (!b64) return;
+  pushBtn.disabled = true;
+  pushBtn.textContent = '⏳ 正在推送到手机副屏...';
+  statusMsg.className = 'status-msg';
+
+  try {
+    const res = await fetch('/api/wallpaper', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: b64 })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      statusMsg.textContent = '✅ 壁纸已成功应用并推送到所有手机副屏！';
+      statusMsg.className = 'status-msg success';
+    } else {
+      statusMsg.textContent = '❌ 推送失败: ' + (data.error || '未知错误');
+      statusMsg.className = 'status-msg error';
+    }
+  } catch(e) {
+    statusMsg.textContent = '❌ 网络请求异常: ' + e.message;
+    statusMsg.className = 'status-msg error';
+  } finally {
+    pushBtn.disabled = false;
+    pushBtn.textContent = '🚀 应用并推送到手机副屏';
+  }
+};
+
+document.getElementById('otaBtn').onclick = async () => {
+  const otaBtn = document.getElementById('otaBtn');
+  otaBtn.disabled = true;
+  otaBtn.textContent = '⏳ 正在广播 OTA...';
+  statusMsg.className = 'status-msg';
+  try {
+    const res = await fetch('/api/ota', { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      statusMsg.textContent = '✅ OTA 指令已广播！所有手机副屏已自动热更新到最新版本！';
+      statusMsg.className = 'status-msg success';
+    } else {
+      statusMsg.textContent = '❌ OTA 失败: ' + (data.error || '未知错误');
+      statusMsg.className = 'status-msg error';
+    }
+  } catch(e) {
+    statusMsg.textContent = '❌ 网络请求异常: ' + e.message;
+    statusMsg.className = 'status-msg error';
+  } finally {
+    otaBtn.disabled = false;
+    otaBtn.textContent = '🔄 一键 OTA 热刷新';
+  }
+};
+
+window.onresize = () => {
+  if (currentImg) {
+    resetCrop();
+    draw();
+  }
+};
+</script>
+</body>
+</html>
